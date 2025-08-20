@@ -14,7 +14,7 @@ class Maze:
         self.generation_complete = False
         self.current_pos = None
         self.stack = []
-        self.phase = "dfs"  # "dfs", "entrance", "exit", "complete"
+        self.phase = "dfs"  # Only "dfs" and "complete" now
     
     def get_maze(self):
         """Return the current maze grid"""
@@ -30,6 +30,21 @@ class Maze:
         
     def start_generation(self):
         """Initialize the generation process"""
+        # Set up entrance and exit points FIRST (already carved and colored)
+        def rand_edge_row():
+            r = random.randint(0, self.rows - 1)
+            if self.rows > 2 and r % 2 == 0:
+                r = max(1, min(self.rows - 2, r + (1 if r == 0 else -1)))
+            return r
+
+        self.start = (rand_edge_row(), 0)
+        self.end = (rand_edge_row(), self.cols - 1)
+        
+        # Carve start and end points immediately
+        self.maze[self.start[0]][self.start[1]] = 1
+        self.maze[self.end[0]][self.end[1]] = 1
+        
+        # Start DFS from random interior point
         if self.rows > 2 and self.cols > 2:
             sx = random.randrange(1, self.rows - 1, 2)
             sy = random.randrange(1, self.cols - 1, 2)
@@ -48,22 +63,17 @@ class Maze:
             
         if self.phase == "dfs":
             return self._step_dfs()
-        elif self.phase == "entrance":
-            return self._step_entrance_exit()
-        elif self.phase == "exit":
-            return self._step_entrance_exit()
         else:
             self.generation_complete = True
             return False
     
     def _step_dfs(self):
         if not self.stack:
-            self.phase = "entrance"
-            self._setup_entrance_exit()
-            return True
+            self.phase = "complete"
+            self.generation_complete = True
+            return False
             
         x, y = self.stack[-1]
-        # Don't set current_pos here yet
         
         directions = [(0, 2), (2, 0), (0, -2), (-2, 0)]
         random.shuffle(directions)
@@ -90,79 +100,6 @@ class Maze:
                 self.current_pos = self.stack[-1]
             
         return True
-        
-    
-    def _setup_entrance_exit(self):
-        """Set up entrance and exit points"""
-        def rand_edge_row():
-            r = random.randint(0, self.rows - 1)
-            if self.rows > 2 and r % 2 == 0:
-                r = max(1, min(self.rows - 2, r + (1 if r == 0 else -1)))
-            return r
-
-        self.start = (rand_edge_row(), 0)
-        self.end = (rand_edge_row(), self.cols - 1)
-        
-        self.maze[self.start[0]][self.start[1]] = 1
-        self.maze[self.end[0]][self.end[1]] = 1
-        
-        # Setup BFS for entrance connection
-        self.current_pos = self.start
-        self.bfs_queue = deque([self.start])
-        self.bfs_parents = {self.start: None}
-        self.connecting_entrance = True
-        
-    def _step_entrance_exit(self):
-        if self.phase == "entrance" and self.connecting_entrance:
-            if self._step_bfs_connection():
-                return True
-            else:
-                # Start exit connection
-                self.phase = "exit"
-                self.current_pos = self.end
-                self.bfs_queue = deque([self.end])
-                self.bfs_parents = {self.end: None}
-                self.connecting_entrance = False
-                return True
-        elif self.phase == "exit":
-            if self._step_bfs_connection():
-                return True
-            else:
-                self.phase = "complete"
-                return False
-        return False
-    
-    def _step_bfs_connection(self):
-        if not self.bfs_queue:
-            return False
-            
-        x, y = self.bfs_queue.popleft()
-        self.current_pos = (x, y)
-        
-        # Check if we found an existing corridor (not the start point)
-        target = self.start if self.connecting_entrance else self.end
-        if (x, y) != target and self.maze[x][y] == 1:
-            # Carve path back to start
-            self._carve_path_to_start((x, y))
-            return False
-            
-        # Continue BFS
-        for dx, dy in ((0,1),(1,0),(0,-1),(-1,0)):
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < self.rows and 0 <= ny < self.cols:
-                if (nx, ny) not in self.bfs_parents:
-                    self.bfs_parents[(nx, ny)] = (x, y)
-                    self.bfs_queue.append((nx, ny))
-        
-        return True
-    
-    def _carve_path_to_start(self, end_pos):
-        target = self.start if self.connecting_entrance else self.end
-        cur = end_pos
-        while cur is not None:
-            cx, cy = cur
-            self.maze[cx][cy] = 1
-            cur = self.bfs_parents[cur]
 
     def create_maze(self):
         """Complete maze generation instantly (for backward compatibility)"""

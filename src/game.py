@@ -60,35 +60,43 @@ class Game:
         elif dy < 0: return "up"
         else: return self.current_direction  # no movement
 
+
     def draw_maze(self):
         start_pos = self.maze_obj.get_start()
         end_pos = self.maze_obj.get_end()
+        rows = len(self.maze)
+        cols = len(self.maze[0])
         
-        for row in range(len(self.maze)):
-            for col in range(len(self.maze[0])):
+        for row in range(rows):
+            for col in range(cols):
                 x = col * self.cell_size
                 y = row * self.cell_size
                 
-                # Default colors: black for walls (0), white for paths (1)
-                if self.maze[row][col] == 0:
-                    color = (50, 50, 50)  # Dark gray for walls
+                # Border override: always dark black unless it's start/end
+                is_border = (row == 0 or row == rows - 1 or col == 0 or col == cols - 1)
+                if is_border and (row, col) not in (start_pos, end_pos):
+                    color = (0, 0, 0)  # dark black border
                 else:
-                    color = (255, 255, 255)  # White for paths
-                
-                # Special colors for start and end
-                if (row, col) == start_pos and self.maze_obj.phase != "dfs":
-                    color = (0, 255, 0)  # Green for start
-                elif (row, col) == end_pos and self.maze_obj.phase == "complete":
-                    color = (255, 0, 0)  # Red for end
+                    # Default colors: dark gray for walls (0), white for paths (1)
+                    if self.maze[row][col] == 0:
+                        color = (50, 50, 50)
+                    else:
+                        color = (255, 255, 255)
+                    
+                    # Special colors for start and end (always visible)
+                    if (row, col) == start_pos:
+                        color = (0, 255, 0)  # Green for start
+                    elif (row, col) == end_pos:
+                        color = (255, 0, 0)  # Red for end
                 
                 pygame.draw.rect(self.screen, color, (x, y, self.cell_size, self.cell_size))
-                
                 # Draw grid lines for better visibility
                 pygame.draw.rect(self.screen, (128, 128, 128), (x, y, self.cell_size, self.cell_size), 1)
         
         # Draw robot at current position during generation
         if self.animate and not self.maze_obj.generation_complete and self.maze_obj.current_pos:
             self._draw_robot()
+
 
     def _draw_robot(self):
         """Draw the drilling robot at current position"""
