@@ -7,13 +7,13 @@ def main():
     pygame.init()
 
     # Set the size of the maze
-    rows, cols = 21, 21  # Example size (20 rows, 20 columns)
+    rows, cols = 21, 21  # Example size
 
-    # Create a maze instance
+    # Create a maze instance (don't generate immediately)
     maze = Maze(rows, cols)
 
-    # Create a game instance
-    game = Game(maze)
+    # Create a game instance with animation enabled
+    game = Game(maze, animate=True)
 
     # Start the game loop
     game.run()
