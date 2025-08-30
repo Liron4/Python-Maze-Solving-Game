@@ -7,7 +7,7 @@ def main():
     pygame.init()
 
     # Set the size of the maze
-    rows, cols = 21, 21  # Example size
+    rows, cols = 31, 31  # Example size
 
     # Create a maze instance (don't generate immediately)
     maze = Maze(rows, cols)

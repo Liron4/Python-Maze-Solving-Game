@@ -64,6 +64,7 @@ class Game:
     def draw_maze(self):
         start_pos = self.maze_obj.get_start()
         end_pos = self.maze_obj.get_end()
+        solution_path = self.maze_obj.get_solution_path()
         rows = len(self.maze)
         cols = len(self.maze[0])
         
@@ -83,7 +84,13 @@ class Game:
                     else:
                         color = (255, 255, 255)
                     
-                    # Special colors for start and end (always visible)
+                    # Yellow trail for solution path during solving phase
+                    if self.maze_obj.is_solving_phase() and (row, col) in solution_path:
+                        color = (255, 255, 0)  # Yellow trail
+                    elif self.maze_obj.is_solving_complete() and (row, col) in solution_path:
+                        color = (255, 255, 0)  # Yellow trail (permanent after solving)
+                    
+                    # Special colors for start and end (always visible, override yellow)
                     if (row, col) == start_pos:
                         color = (0, 255, 0)  # Green for start
                     elif (row, col) == end_pos:
@@ -93,9 +100,13 @@ class Game:
                 # Draw grid lines for better visibility
                 pygame.draw.rect(self.screen, (128, 128, 128), (x, y, self.cell_size, self.cell_size), 1)
         
-        # Draw robot at current position during generation
-        if self.animate and not self.maze_obj.generation_complete and self.maze_obj.current_pos:
-            self._draw_robot()
+        # Draw robot at current position during generation or solving, and at exit when complete
+        if self.animate and self.maze_obj.current_pos:
+            if not self.maze_obj.is_solving_complete():
+                self._draw_robot()
+            elif self.maze_obj.current_pos == self.maze_obj.get_end():
+                # Keep robot visible at exit after solving is complete
+                self._draw_robot()
 
 
     def _draw_robot(self):
@@ -127,23 +138,45 @@ class Game:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         # Skip animation, complete instantly
-                        if not self.maze_obj.generation_complete:
+                        if not self.maze_obj.is_solving_complete():
                             self.maze_obj.create_maze()  # Use instant generation
-                            self.maze_obj.generation_complete = True
+                            # If we found exit during generation, complete solving too
+                            if self.maze_obj.found_exit_during_generation:
+                                self.maze_obj._start_solving()
+                                self.maze_obj.solving_complete = True
+                                self.maze_obj.solving_current_step = len(self.maze_obj.solution_path)
+                                # Set robot position to exit and face right
+                                self.maze_obj.current_pos = self.maze_obj.get_end()
+                                self.current_direction = "right"
+                            else:
+                                self.maze_obj.solving_complete = True
                     elif event.key == pygame.K_RETURN:
                         # Toggle pause
                         self.paused = not self.paused
 
             # Animation step (only if not paused)
-            if (self.animate and not self.maze_obj.generation_complete and not self.paused and
+            if (self.animate and not self.maze_obj.is_solving_complete() and not self.paused and
                 current_time - self.last_step_time > self.animation_speed):
                 
                 prev_pos = self.maze_obj.current_pos
                 continuing = self.maze_obj.step_generation()
                 
                 # Update robot direction
-                if self.maze_obj.current_pos:
+                if self.maze_obj.current_pos and prev_pos:
+                    new_direction = self._get_direction(prev_pos, self.maze_obj.current_pos)
+                    # If robot is moving to the exit, ensure it faces right
+                    if self.maze_obj.current_pos == self.maze_obj.get_end():
+                        self.current_direction = "right"
+                    else:
+                        self.current_direction = new_direction
+                elif self.maze_obj.current_pos:
+                    # Handle case where prev_pos is None
                     self.current_direction = self._get_direction(prev_pos, self.maze_obj.current_pos)
+                
+                # If solving just completed and robot is at exit, ensure it faces right
+                if (self.maze_obj.is_solving_complete() and 
+                    self.maze_obj.current_pos == self.maze_obj.get_end()):
+                    self.current_direction = "right"
                 
                 self.last_step_time = current_time
 
@@ -154,16 +187,23 @@ class Game:
             # Show instructions
             font = pygame.font.Font(None, 36)
             
-            # Top left instruction (skip)
-            if not self.maze_obj.generation_complete:
-                text = font.render("Press SPACE to skip animation", True, (255, 255, 255))
-                self.screen.blit(text, (10, 10))
+            # Top left instruction (skip) - tied to very edge
+            if not self.maze_obj.is_solving_complete():
+                if self.maze_obj.is_solving_phase():
+                    text = font.render("Solving maze...", True, (255, 255, 0))
+                else:
+                    text = font.render("Press SPACE to skip animation", True, (255, 255, 255))
+                self.screen.blit(text, (0, 0))  # Very edge
+            else:
+                text = font.render("Maze complete!", True, (0, 255, 0))
+                self.screen.blit(text, (0, 0))  # Very edge
             
-            # Bottom left instruction (pause/unpause)
-            if not self.maze_obj.generation_complete:
+            # Bottom left instruction (pause/unpause) - tied to very edge
+            if not self.maze_obj.is_solving_complete():
                 pause_text = "Press ENTER to resume" if self.paused else "Press ENTER to pause"
                 pause_surface = font.render(pause_text, True, (255, 255, 255))
-                self.screen.blit(pause_surface, (10, self.window_size[1] - 50))
+                pause_rect = pause_surface.get_rect()
+                self.screen.blit(pause_surface, (0, self.window_size[1] - pause_rect.height))  # Very edge
             
             pygame.display.flip()
             clock.tick(60)
