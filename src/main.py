@@ -35,6 +35,7 @@ def main():
         cols=config['cols'], 
         window_size=config['window_size'],
         animation_speed=config['animation_speed'],
+        ui_font_size=config['ui_font_size'],
         animate=True
     )
     game_controller.run()

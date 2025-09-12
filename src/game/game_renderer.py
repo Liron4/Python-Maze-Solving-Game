@@ -4,14 +4,19 @@ Follows Single Responsibility Principle - only handles rendering and drawing.
 """
 import pygame
 import os
+from game.ending_screen_renderer import EndingScreenRenderer
 
 
 class GameRenderer:
     """Handles rendering of the maze, robot, and UI elements."""
     
-    def __init__(self, window_size, maze_structure):
+    def __init__(self, window_size, maze_structure, ui_font_size=28):
         self.window_size = window_size
         self.maze_structure = maze_structure
+        self.ui_font_size = ui_font_size
+        
+        # Initialize ending screen renderer
+        self.ending_screen_renderer = EndingScreenRenderer(window_size)
         
         # Apply zero margins for all resolutions to maximize maze size
         ui_margin_top = 0   # No top margin - maze goes to edge
@@ -38,7 +43,7 @@ class GameRenderer:
         pygame.init()
         self.screen = pygame.display.set_mode(window_size)
         pygame.display.set_caption("Maze Generator & Solver - Optimized View")
-        self.font = pygame.font.Font(None, 36)
+        self.font = pygame.font.Font(None, 70)
 
     def _load_robot_images(self):
         """Load robot drilling animation images"""
@@ -115,42 +120,21 @@ class GameRenderer:
         robot_image = self.robot_images.get(direction, self.robot_images["down"])
         self.screen.blit(robot_image, (x, y))
 
-    def draw_status_text(self, phase, paused=False):
-        """Draw status text in the bottom left corner"""
-        if phase == "generation":
-            if paused:
-                text = "Generation PAUSED - Press ENTER to resume"
-                color = (255, 255, 255)
-            else:
-                text = "Generating maze... Press SPACE to skip"
-                color = (255, 255, 255)
-        elif phase == "path_solving":
-            if paused:
-                text = "Path solving PAUSED - Press ENTER to resume"
-                color = (255, 255, 0)
-            else:
-                text = "Solving with optimal path..."
-                color = (255, 255, 0)
-        elif phase == "right_hand":
-            if paused:
-                text = "Right-hand solving PAUSED - Press ENTER to resume"
-                color = (0, 100, 255)
-            else:
-                text = "Solving with right-hand rule..."
-                color = (0, 100, 255)
-        else:
-            text = "All simulations complete!"
-            color = (0, 255, 0)
+    def draw_ui_elements(self, timer_display, current_phase):
+        """Draw all UI elements using the timer display"""
+        # Algorithm info (top left) and timer (top right)
+        timer_display.draw_algorithm_info(self.screen, current_phase)
+        timer_display.draw_current_timer(self.screen)
+
+    def render_ending_screen(self, path_solver, right_hand_solver, timer_display):
+        """Render the ending screen with comparison data"""
+        # Draw blurred background (maze)
+        path_solver_path = path_solver.get_current_path()
+        right_hand_path = right_hand_solver.get_current_path()
+        self.draw_maze(path_solver_path, right_hand_path)
         
-        # Draw main status text
-        status_surface = self.font.render(text, True, color)
-        self.screen.blit(status_surface, (10, self.window_size[1] - 80))
-        
-        # Draw pause instruction if not complete
-        if phase != "complete":
-            pause_text = "Press ENTER to pause/resume"
-            pause_surface = self.font.render(pause_text, True, (200, 200, 200))
-            self.screen.blit(pause_surface, (10, self.window_size[1] - 40))
+        # Delegate ending screen rendering to specialized renderer
+        self.ending_screen_renderer.render(self.screen, path_solver, right_hand_solver, timer_display)
 
     def clear_screen(self):
         """Clear the screen with dark background"""
