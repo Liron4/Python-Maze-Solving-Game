@@ -8,8 +8,8 @@ CONFIGURATIONS = {
     "ultra_hd": {
         "window_size": (1920, 1080),
         "rows": 37, "cols": 67,    # Maximized cell size with zero margins
-        "animation_speed": 75,     # Very fast for large mazes
-        "ui_font_size": 45,        # Font size for algorithm info and timer
+        "animation_speed": 50,     # Very fast for large mazes
+        "ui_font_size": 50,        # Font size for algorithm info and timer
         "description": "Ultra HD - Maximum size maze fills entire screen"
     },
     

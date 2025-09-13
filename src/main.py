@@ -1,7 +1,3 @@
-"""
-Main entry point for the Maze Generator and Solver application.
-Now using refactored SOLID architecture with separate modules.
-"""
 import sys
 import os
 

@@ -28,10 +28,13 @@ class MazeGenerator:
     def initialize_entry_exit(self):
         """Set up entrance and exit points"""
         def rand_edge_row():
-            r = random.randint(0, self.maze_structure.rows - 1)
-            if self.maze_structure.rows > 2 and r % 2 == 0:
-                r = max(1, min(self.maze_structure.rows - 2, r + (1 if r == 0 else -1)))
-            return r
+            rows = self.maze_structure.rows
+            # If there are only 1 or 2 rows, just pick any valid row.
+            if rows <= 2:
+                return random.randint(0, rows - 1)
+            # Prefer an odd interior row (1 .. rows-2) so paths align with typical maze grids.
+            odd_rows = [r for r in range(1, rows - 1) if r % 2 == 1]
+            return random.choice(odd_rows)
 
         start = (rand_edge_row(), 0)
         end = (rand_edge_row(), self.maze_structure.cols - 1)
